@@ -48,6 +48,7 @@ namespace lidar_perception_ros{
         float min_height_;
         float max_height_;
         float height_diff_;
+        float intensity_ave_;
 
         bool is_roadside_;
         PointCloud grid_cloud_;

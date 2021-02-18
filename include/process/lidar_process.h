@@ -28,9 +28,9 @@ as well as in the event of applications for industrial property rights.
 // ros include
 #include <ros/ros.h>
 #include <ros/publisher.h>
+#include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <sensor_msgs/point_cloud_conversion.h>
 
 // system include
 #include <fstream>
@@ -50,11 +50,9 @@ as well as in the event of applications for industrial property rights.
 #include "segment/object_cluster.h"
 #include "detect/curb_detect.h"
 #include "builder/bbox_fitting.h"
+#include "builder/bbox_fitting_lshape.h"
 #include "tracker/tracking.h"
 #include "manager/config_manager.h"
-
-//publish messages
-#include "msgs/ObjectInfoArray.h"
 
 namespace lidar_perception_ros {
 
@@ -70,21 +68,15 @@ namespace lidar_perception_ros {
 
         bool Init(const std::string &config_path);
 
-        void ProcessLidarData(const sensor_msgs::PointCloud2::ConstPtr& p_Horizon_ptr,
-                              lidar_perception::ObjectInfoArray &object_info_msg);
+        void ProcessLidarData(const sensor_msgs::PointCloud2ConstPtr& p_Horizon_ptr);
 
-        void callback(const sensor_msgs::PointCloud2ConstPtr& p_Horizon_ptr);
-        void run(ros::NodeHandle node);
         ros::NodeHandle node_;
         ros::Subscriber lidar_subscriber_;
-        ros::Publisher lidar_publisher_;
 
     private:
-        // TMP
         void ConversionData(const sensor_msgs::PointCloud2::ConstPtr& input, PointCloudPtr& input_cloud_ptr);
 
-        void ProcessPointCloud(const PointCloudPtr& input_cloud_ptr,
-                               lidar_perception::ObjectInfoArray& object_info_msg);
+        void ProcessPointCloud(const PointCloudPtr& input_cloud_ptr);
 
         void CalibratePointCloud(PointCloudPtr& input_cloud_ptr);
 
@@ -96,14 +88,13 @@ namespace lidar_perception_ros {
         std::shared_ptr<CurbDetect> curb_detect_;
         std::shared_ptr<Segment> segment_;
         std::shared_ptr<Cluster> object_cluster_;
-        std::shared_ptr<BBoxEstimator> bbox_fitting_;
+        std::shared_ptr<LShapeBBoxEstimator> bbox_fitting_;
         std::shared_ptr<Tracking> tracking_;
 
         // Config
         ConfigManager config_manager_;
         Eigen::Matrix4d extrinsics_;
 
-        // TMP PCL
         pcl::visualization::PCLVisualizer::Ptr viewer_;
     };
 }

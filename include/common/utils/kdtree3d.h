@@ -124,6 +124,13 @@ namespace lidar_perception_ros{
             SearchHelper(target, root, 0, distanceTol, ids);
             return ids;
         }
+
+        int radiusSearch(PointXYZI<float> search_pt, double radius, std::vector<int> &k_indices)
+        {
+            k_indices.clear();
+            SearchHelper(search_pt, root, 0, radius, k_indices);
+            return k_indices.size();
+        }
     };
 }
 

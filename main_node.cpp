@@ -31,13 +31,11 @@ int main(int argc, char **argv)
 
         ros::NodeHandle nh;
 
-        string config_path = "/home/chenwei/lidar_perception/src/config/obstacle_detection.json";
+        string config_path = "/home/chenwei/HDD/Project/lidar_perception/config/obstacle_detection.json";
 
         LidarProcess lidar_process;
 
         lidar_process.Init(config_path);
-
-        lidar_process.run(nh);
 
         ROS_INFO("Start Lidar Perception ROS loop\n");
 

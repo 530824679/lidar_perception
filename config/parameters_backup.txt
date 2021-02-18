@@ -1,0 +1,41 @@
+iMotion E100 horizon:
+  "calibrate": {
+    "roll": -0.001568,
+    "pitch": 0.180475,
+    "yaw": 0.0100436,
+    "tx": 0.0380122,
+    "ty": 0.00553801,
+    "tz": 1.87462
+  },
+  "curb_detect": {
+    "max_ground_plane_i": 8.0,
+  }
+
+SGMW E100 horizon:
+  "calibrate": {
+    "roll": -0.0404126,
+    "pitch": 0.170683,
+    "yaw": -0.069972,
+    "tx": 0.0628293,
+    "ty": 0.397884,
+    "tz": 1.86903
+  },
+  "curb_detect": {
+    "max_ground_plane_i": 15.0,
+  }
+
+iMotion E300 mid70:
+  "roll": 0.0373239,
+  "pitch": -0.0047292,
+  "yaw": 0.0100436,
+  "tx": 0.5380122,
+  "ty": -0.4875,
+  "tz": 1.55172
+
+iMotion E100 velodyne:
+  "roll": 0.010816,
+  "pitch": -0.00966533,
+  "yaw": 0.0100436,
+  "tx": 0.0380122,
+  "ty": 0.00553801,
+  "tz": 1.84377

@@ -38,23 +38,26 @@ namespace lidar_perception_ros{
         void Init(const BBox& bbox);
         void Predict();
         void Update(const BBox& bbox);
-        BBox GetStateAsBbox() const;
-        TrackerInfo GetStateAsVelocity() const;
+        TrackerInfo GetStateAsBbox() const;
+        TrackerInfo GetStateAsInputBbox() const;
         float GetNIS() const;
 
         int GetCoastCycles();
         int GetHitStreak();
 
-        bool RejectOutlier(Velocity& publish_velocity_);
+        bool RejectOutlier(TrackerInfo& bbox_);
 
     private:
+        Point2D NearestBboxCorner(const BBox& bbox) const;
         Eigen::VectorXd ConvertBboxToObservation(const BBox& bbox) const;
-        BBox ConvertStateToBbox(const Eigen::VectorXd &state) const;
-        TrackerInfo ConvertStateToVelocity(const Velocity &publish_velocity_) const;
+        Eigen::VectorXd ConvertBottomToObservation(const BBox& bbox) const;
+        TrackerInfo ConvertStateToBbox(const Eigen::VectorXd &state,const Eigen::VectorXd &velocity_state) const;
+        TrackerInfo ConvertStateToInputBbox(const TrackerInfo &bbox) const;
 
     private:
         KalmanFilter kf_;
-        Velocity publish_velocity_;
+        KalmanFilter kf_velocity_;
+        TrackerInfo bbox_;
 
         int coast_cycles_;
         int hit_streak_;

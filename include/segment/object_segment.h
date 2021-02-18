@@ -21,7 +21,7 @@ as well as in the event of applications for industrial property rights.
 #define _LIDAR_PERCEPTION_ROS_OBJECT_SEGMENT_H_
 
 // system include
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 // json include
 #include "common/json/json.h"
@@ -37,6 +37,7 @@ as well as in the event of applications for industrial property rights.
 #include "common/utils/point3d.h"
 #include "common/utils/types.h"
 #include "Eigen/Dense"
+#include "Eigen/Core"
 
 namespace lidar_perception_ros{
 
@@ -55,16 +56,18 @@ namespace lidar_perception_ros{
 
     public:
         Segment() = default;
-        Segment(SegmentParam param);
+        Segment(SegmentParam segment_param, ROIParam roi_param);
         ~Segment();
 
         void ObjectSegment(const PointCloud& input_cloud, PointCloud& out_cloud, Eigen::Vector4d& plane_coefficients);
         bool Ransac3D(const PointCloud& input_cloud, Eigen::Vector4d& plane_coefficients);
 
-        bool BuildGridMap(const PointCloud& input_cloud, PointCloud& out_cloud);
+        bool BuildGridMap(const PointCloud& input_cloud, PointCloud& out_cloud, Eigen::Vector4d plane_coefficients);
         float Min(float x, float y);
         float Max(float x, float y);
-
+        void CreateRotateMatrix(Eigen::Vector3f a, Eigen::Vector3f b, Eigen::Matrix3f &rotate_matrix);
+        void CoordTransfor(const PointCloud& input_cloud, Eigen::Matrix3f &rotation_matrix, PointCloud& out_cloud);
+        void CalcRotateMatrix(Eigen::Vector4d plane_coefficients, Eigen::Matrix3f &rotate_matrix);
     private:
         float Distance(Point3D& pt1, Point3D& pt2);
         bool CollineationJudge(Point3D& pt1, Point3D& pt2, Point3D& pt3);

@@ -4,10 +4,22 @@ namespace lidar_perception_ros{
 
     ROIFilter::ROIFilter()
     {
-        //point_cloud_ptr_ = std::make_shared<PointCloud>();
-        filter_field_name_ = "";
-        filter_limit_min_ = FLT_MIN;
-        filter_limit_max_ = FLT_MAX;
+        filter_limit_min_x_ = FLT_MIN;
+        filter_limit_max_x_ = FLT_MAX;
+        filter_limit_min_y_ = FLT_MIN;
+        filter_limit_max_y_ = FLT_MAX;
+        filter_limit_min_z_ = FLT_MIN;
+        filter_limit_max_z_ = FLT_MAX;
+    }
+
+    ROIFilter::ROIFilter(ROIParam roi_param)
+    {
+        filter_limit_min_x_ = roi_param.roi_x_min_;
+        filter_limit_max_x_ = roi_param.roi_x_max_;
+        filter_limit_min_y_ = roi_param.roi_y_min_;
+        filter_limit_max_y_ = roi_param.roi_y_max_;
+        filter_limit_min_z_ = roi_param.roi_z_min_;
+        filter_limit_max_z_ = roi_param.roi_z_max_;
     }
 
     ROIFilter::~ROIFilter()
@@ -16,21 +28,10 @@ namespace lidar_perception_ros{
         indices_ptr_.reset();
     }
 
-    void ROIFilter::PassThough(const PointCloudPtr& input_cloud_ptr, PointCloudPtr& output_cloud_ptr, ROIParam roi_param)
+    void ROIFilter::PassThough(const PointCloudPtr& input_cloud_ptr, PointCloudPtr& output_cloud_ptr)
     {
         SetInputCloud(input_cloud_ptr);
-        SetFilterFieldName("x");
-        SetFilterLimits(roi_param.roi_x_min_, roi_param.roi_x_max_);
-        Filter(*output_cloud_ptr);
-
-        SetInputCloud(output_cloud_ptr);
-        SetFilterFieldName("y");
-        SetFilterLimits(roi_param.roi_y_min_, roi_param.roi_y_max_);
-        Filter(*output_cloud_ptr);
-
-        SetInputCloud(output_cloud_ptr);
-        SetFilterFieldName("z");
-        SetFilterLimits(roi_param.roi_z_min_, roi_param.roi_z_max_);
+        SetFilterLimits(filter_limit_min_x_, filter_limit_max_x_, filter_limit_min_y_, filter_limit_max_y_, filter_limit_min_z_, filter_limit_max_z_);
         Filter(*output_cloud_ptr);
     }
 
@@ -86,15 +87,14 @@ namespace lidar_perception_ros{
         point_cloud_ptr_ = cloud;
     }
 
-    void ROIFilter::SetFilterFieldName(const std::string &field_name)
+    void ROIFilter::SetFilterLimits(const float &limit_min_x, const float &limit_max_x, const float &limit_min_y, const float &limit_max_y, const float &limit_min_z, const float &limit_max_z)
     {
-        filter_field_name_ = field_name;
-    }
-
-    void ROIFilter::SetFilterLimits(const float &limit_min, const float &limit_max)
-    {
-        filter_limit_min_ = limit_min;
-        filter_limit_max_ = limit_max;
+        filter_limit_min_x_ = limit_min_x;
+        filter_limit_max_x_ = limit_max_x;
+        filter_limit_min_y_ = limit_min_y;
+        filter_limit_max_y_ = limit_max_y;
+        filter_limit_min_z_ = limit_min_z;
+        filter_limit_max_z_ = limit_max_z;
     }
 
     void ROIFilter::Filter(PointCloud &output_cloud)
@@ -111,7 +111,6 @@ namespace lidar_perception_ros{
         for (int i = 0; i < static_cast<int>(indices_ptr_->size()); ++i)
         {
 
-
             if ( !std::isfinite((*point_cloud_ptr_)[(*indices_ptr_)[i]].GetX()) ||
                  !std::isfinite((*point_cloud_ptr_)[(*indices_ptr_)[i]].GetY()) ||
                  !std::isfinite((*point_cloud_ptr_)[(*indices_ptr_)[i]].GetZ()))
@@ -119,25 +118,18 @@ namespace lidar_perception_ros{
                 continue;
             }
 
-            float value = 0;
-            if (filter_field_name_ == "x") {
-                value = (*point_cloud_ptr_)[(*indices_ptr_)[i]].GetX();
-            }else if (filter_field_name_ == "y") {
-                value = (*point_cloud_ptr_)[(*indices_ptr_)[i]].GetY();
-            }else if (filter_field_name_ == "z") {
-                value = (*point_cloud_ptr_)[(*indices_ptr_)[i]].GetZ();
-            } else {
-                printf("[%s]: Unable to find field name in point type.\n", __func__);
-                indices.clear();
-                return;
-            }
+            float valueX = (*point_cloud_ptr_)[(*indices_ptr_)[i]].GetX();
+            float valueY = (*point_cloud_ptr_)[(*indices_ptr_)[i]].GetY();
+            float valueZ = (*point_cloud_ptr_)[(*indices_ptr_)[i]].GetZ();
 
-            if (!std::isfinite(value))
+            if (!std::isfinite(valueX) || !std::isfinite(valueY) || !std::isfinite(valueZ))
             {
                 continue;
             }
 
-            if (value < filter_limit_min_ || value > filter_limit_max_)
+            if (valueX < filter_limit_min_x_ || valueX > filter_limit_max_x_ ||
+                valueY < filter_limit_min_y_ || valueY > filter_limit_max_y_ ||
+                valueZ < filter_limit_min_z_ || valueZ > filter_limit_max_z_)
             {
                 continue;
             }

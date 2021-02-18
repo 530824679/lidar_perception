@@ -12,6 +12,17 @@ namespace lidar_perception_ros{
         acceleration_threshold_ = param.acceleration_threshold_;
         min_confidence_ = param.min_confidence_;
         filter_threshold_ = param.filter_threshold_;
+        kernel_size_ = param.kernel_size_;
+        iou_weight_ = param.iou_weight_;
+        rotate_iou_weight_ = param.rotate_iou_weight_;
+        distance_weight_ = param.distance_weight_;
+        centroid_weight_ = param.centroid_weight_;
+        pointnum_weight_ = param.pointnum_weight_;
+        use_mutil_threshold_ = param.use_mutil_threshold_;
+        first_threshold_ = param.first_threshold_;
+        second_threshold_ = param.second_threshold_;
+        third_threshold_ = param.third_threshold_;
+        tracking_distance_[4] = param.tracking_distance_[4];
         
     }
 
@@ -19,93 +30,88 @@ namespace lidar_perception_ros{
 
     }
 
-    void Tracking::Process(std::vector<BBox> bboxes, lidar_perception::ObjectInfoArray& object_info_msg)
+    void Tracking::Process(std::vector<BBox> bboxes)
     {
-        Track(tracks_, bboxes,frame_index_, current_id_, object_info_msg);
+        Track(tracks_, bboxes, frame_index_, current_id_);
         frame_index_++;
     }
+
+    Rect intersection_area_cal (Rect a, Rect b){
+        Rect c(a.x,a.y,a.width,a.height);
+        float x1 = std::max(c.x, b.x);
+        float y1 = std::max(c.y, b.y);
+        c.width = std::min(c.x + c.width, b.x + b.width) - x1;
+        c.height = std::min(c.y + c.height, b.y + b.height) - y1;
+        c.x = x1;
+        c.y = y1;
+        if( c.width <= 0 || c.height <= 0 )
+            c = Rect();
+        return c;
+    }
+
+    Rect union_area_cal (Rect a, Rect b){
+        Rect c(a.x,a.y,a.width,a.height);
+        if (c.width <= 0|| c.height <= 0 ) {
+            c = b;
+        }
+        else if (!(b.width <= 0 || b.height <= 0)) {
+            float x1 = std::min(c.x, b.x);
+            float y1 = std::min(c.y, b.y);
+            c.width = std::max(c.x + c.width, b.x + b.width) - x1;
+            c.height = std::max(c.y + c.height, b.y + b.height) - y1;
+            c.x = x1;
+            c.y = y1;
+        }
+        return c;
+        }
 
     float Tracking::CalculateIou(const BBox& det, const Tracker& track) {
         auto trk = track.GetStateAsBbox();
 
-        // auto xx1 = std::min((det.x + det.dx/2), (trk.x + trk.dx/2));
-        // auto yy1 = std::min((det.y + det.dy/2), (trk.y + trk.dy/2));
-        // auto xx2 = std::max((det.x - det.dx/2), (trk.x - det.dx/2));
-        // auto yy2 = std::max((det.y - det.dy/2), (trk.y - det.dy/2));
+        Rect det_box(det.rect_x,det.rect_y,det.rect_dx,det.rect_dy);
+        Rect trk_box(trk.center_x,trk.center_y,trk.width,trk.length);
 
-        // // std::cout<<"x1:"<<det.x + det.dx/2<<" y1:"<<det.y + det.dy/2<<" x2:"<<det.x - det.dx/2<<" y2"<<det.y - det.dy/2<<std::endl;
-        // // std::cout<<"tx1:"<<trk.x + trk.dx/2<<" ty1:"<<trk.y + trk.dy/2<<" tx2:"<<trk.x - det.dx/2<<" ty2"<<trk.y - det.dy/2<<std::endl;
+        Rect intersection_area = intersection_area_cal(det_box,trk_box);
 
-        // // std::cout<<"x1:"<<det.x <<" y1:"<<det.y <<" dx"<<det.dx<<" dy"<<det.dy<< std::endl;
-        // // std::cout<<"tx1:"<<trk.x <<" ty1:"<<trk.y <<" tx"<<trk.dx<<"ty"<<trk.dy<<std::endl;
-
-        // auto l = std::max(0, int(xx2 - xx1));
-        // auto w = std::max(0, int(yy2 - yy1));
-
-        // float det_area = det.dx * det.dy;
-        // float trk_area = trk.dx * trk.dy;
-
-        // auto intersection_area = l * w;
-        // float union_area = det_area + trk_area - intersection_area;
-        // std::cout<<det_area+trk_area<<" "<<intersection_area<<std::endl;
-        // auto iou = intersection_area / union_area;
-
-        cv::Rect det_box;
-        det_box.x=det.x;
-        det_box.y=det.y;
-        det_box.width=det.dx;
-        det_box.height=det.dy;
-
-        cv::Rect trk_box;
-        trk_box.x=trk.x;
-        trk_box.y=trk.y;
-        trk_box.width=trk.dx;
-        trk_box.height=trk.dy;
-
-        cv::Rect intersection_area=det_box&trk_box;
-        cv::Rect union_area=det_box|trk_box;
-        // std::cout<<"intersection_area:"<<intersection_area.area()<<std::endl;
-        // std::cout<<"union_area:"<<union_area.area()<<std::endl;
-
-        if(union_area.area()==0){return 0;}
-        float iou = intersection_area.area() *1.0/ union_area.area();
-        // std::cout<<"iou:"<<iou<<std::endl;
+        Rect union_area= union_area_cal(det_box,trk_box);
+        float iou = static_cast<float> (intersection_area.area()/static_cast<float>(union_area.area()+ 0.0001));
         return iou;
     }
 
     float Tracking::CalculateRotateIOU(const BBox& det, const Tracker& track) {
-        auto trk = track.GetStateAsBbox();
+        auto trk = track.GetStateAsInputBbox();
         
-        cv::Point2f det_center(det.x,det.y);
-        cv::Size2f det_size(det.dx,det.dy);
+        Point2D det_center(det.x,det.y);
+        Size2D det_size(det.dx,det.dy);
         float tmp_det_angle=det.yaw;
         if (tmp_det_angle < 0)
             {tmp_det_angle+=2. * M_PI;}
         float det_angle=tmp_det_angle/(2*M_PI)*360;
-        cv::RotatedRect det_rectangle(det_center,det_size,det_angle);
+        RotatedRect det_rectangle(det_center,det_size,det_angle);
 
-        cv::Point2f trk_center(trk.x,trk.y);
-        cv::Size2f trk_size(trk.dx,trk.dy);
-        float tmp_trk_angle=trk.yaw;
+        Point2D trk_center(trk.center_x,trk.center_y);
+        Size2D trk_size(trk.width,trk.length);
+        float tmp_trk_angle=trk.angle;
         if(tmp_trk_angle<0){
             tmp_trk_angle+=2. * M_PI;
         }
         float trk_angle=tmp_trk_angle/(2*M_PI)*360;
-        cv::RotatedRect trk_rectangle(trk_center,trk_size,trk_angle);
+        RotatedRect trk_rectangle(trk_center,trk_size,trk_angle);
 
         float det_area = det_rectangle.size.width * det_rectangle.size.height;
         float trk_area = trk_rectangle.size.width * trk_rectangle.size.height;
-        std::vector<cv::Point2f> vertices;
+        std::vector<Point2D> vertices;
     
-        int intersectionType = cv::rotatedRectangleIntersection(det_rectangle, trk_rectangle, vertices);
+        int intersectionType = rotated_iou_.rotatedRectangleIntersection(det_rectangle, trk_rectangle, vertices);
+
         if (vertices.size()==0)
             return 0.0;
         else{
-            std::vector<cv::Point2f> order_pts;
+            std::vector<Point2D> order_pts;
             // 找到交集（交集的区域），对轮廓的各个点进行排序
-            cv::convexHull(cv::Mat(vertices), order_pts, true);
-            double inter_area = cv::contourArea(order_pts);
-            float iou = (float) (inter_area / (det_area + trk_area - inter_area + 0.0001));
+            rotated_iou_.convexHull(vertices,order_pts);
+            double inter_area = rotated_iou_.counterArea(order_pts);
+            float iou = (float) (inter_area) / (det_area + trk_area - inter_area + 0.0001);
             return iou;
         }
 
@@ -113,14 +119,50 @@ namespace lidar_perception_ros{
 
     float Tracking::CalculateLocationDistance(const BBox& det, const Tracker& track){
         auto trk = track.GetStateAsBbox();
+        float det_bottom_center_x = det.rect_x - det.rect_dx/2;
+        float det_bottom_center_y = det.rect_y;
+        float trk_bottom_center_x = trk.center_x - trk.length/2;
+        float trk_bottom_center_y = trk.center_y;
 
-        float distance=sqrt((trk.x-det.x)*(trk.x-det.x)+(trk.y-det.y)*(trk.y-det.y));
+        // float det_bottom_center_x = det.rect_x;
+        // float det_bottom_center_y = det.rect_y;
+        // float trk_bottom_center_x = trk.center_x;
+        // float trk_bottom_center_y = trk.center_y;
+
+        float bottom_center_distance = sqrt((trk_bottom_center_x-det_bottom_center_x)*(trk_bottom_center_x-det_bottom_center_x)+
+                              (trk_bottom_center_y-det_bottom_center_y)*(trk_bottom_center_y-det_bottom_center_y));
+
+        //float distance = sqrt((trk.center_x-det.rect_x)*(trk.center_x-det.rect_x)+(trk.center_y-det.rect_y)*(trk.center_y-det.rect_y));
         
-        float distance_score=exp(-distance);
-        //std::cout<<"distance_socre:"<<distance_score<<std::endl;
+        //float distance_score = 1/(1+exp(-distance));
+        float bottom_center_distance_score = exp(-bottom_center_distance);
+        return bottom_center_distance_score;
+    }
 
-        return distance_score;
-    }   
+    float Tracking::CalculateCentroidDistance(const BBox& det, const Tracker& track){
+        auto trk = track.GetStateAsInputBbox();
+        float det_centroid_x = det.centroid_x;
+        float det_centroid_y = det.centroid_y;
+        float trk_centroid_x = trk.centroid_x;
+        float trk_centroid_y = trk.centroid_y;
+        float centroid_distance = sqrt((trk_centroid_x-det_centroid_x)*(trk_centroid_x-det_centroid_x)+
+                              (trk_centroid_y-det_centroid_y)*(trk_centroid_y-det_centroid_y));
+        
+        float centroid_distance_score = exp(-centroid_distance);
+        return centroid_distance_score;
+        
+    }
+
+    float Tracking::CalculatePointnumDistance(const BBox& det, const Tracker& track){
+        auto trk = track.GetStateAsInputBbox();
+        float trk_point_num = trk.points_num;
+        float det_point_num = det.points_num;
+
+        float pointnum_distance = abs(det.points_num-trk.points_num);
+        float pointnum_distance_score = 1-pointnum_distance / std::max(trk_point_num,det_point_num);
+        return pointnum_distance_score;
+        
+    }
 
     void Tracking::HungarianMatching(const std::vector<std::vector<float>>& iou_matrix, size_t nrows, size_t ncols, std::vector<std::vector<float>>& association) {
         Matrix<float> matrix(nrows, ncols);
@@ -172,11 +214,19 @@ namespace lidar_perception_ros{
         for (size_t i = 0; i < bboxes.size(); i++) {
             size_t j = 0;
             for (const auto& trk : tracks) {
-                float iou_socre=CalculateIou(bboxes[i], trk.second)*0.8;
-                float distance_score=CalculateLocationDistance(bboxes[i],trk.second)*0.2;
-                iou_matrix[i][j] = iou_socre+distance_score;
-                //std::cout<<"iou_matrix:"<<iou_matrix[i][j]<<std::endl;
-                //iou_matrix[i][j] = CalculateRotateIOU(bboxes[i], trk.second);
+                float iou_score = CalculateIou(bboxes[i], trk.second)*iou_weight_;
+                float rotate_iou_score = CalculateRotateIOU(bboxes[i], trk.second)*rotate_iou_weight_;
+                float distance_score = CalculateLocationDistance(bboxes[i], trk.second)*distance_weight_;
+                float centroid_score = CalculateCentroidDistance(bboxes[i],trk.second)*centroid_weight_;
+                float pointnums_score = CalculatePointnumDistance(bboxes[i],trk.second)*pointnum_weight_;
+                iou_matrix[i][j] = iou_score+distance_score+rotate_iou_score+centroid_score+pointnums_score;
+                
+                // float iou_score=CalculateIou(bboxes[i], trk.second)*0.1;
+                // float rotate_iou_score = CalculateRotateIOU(bboxes[i], trk.second)*0.1;
+                // float distance_score = CalculateLocationDistance(bboxes[i],trk.second)*0.5;
+                // float centroid_score = 0.3;
+                // iou_matrix[i][j] = iou_score+distance_score+rotate_iou_score+centroid_score;
+                // std::cout<<"iou_matrix:"<<iou_matrix[i][j]<<std::endl;
                 j++;
             }
         }
@@ -189,8 +239,19 @@ namespace lidar_perception_ros{
             size_t j = 0;
             for (const auto& trk : tracks) {
                 if (0 == association[i][j]) {
+                    if(use_mutil_threshold_){
+                    if(tracking_distance_[2]<bboxes[i].x&&bboxes[i].x<tracking_distance_[3]){
+                        filter_threshold_ = third_threshold_;
+                    }else if(tracking_distance_[1]<bboxes[i].x&&bboxes[i].x<=tracking_distance_[2]){
+                        filter_threshold_ = second_threshold_;
+                    }else if(tracking_distance_[0]<bboxes[i].x&&bboxes[i].x<=tracking_distance_[1]){
+                        filter_threshold_ = first_threshold_;
+                    }
+                    }
+                    
                     // Filter out matched with low IOU
                     if (iou_matrix[i][j] >= filter_threshold_) {//IOU threshold
+                    //std::cout<<"filter_threshold_:"<<filter_threshold_<<std::endl;
                         matched[trk.first] = bboxes[i];
                         matched_flag = true;
                     }
@@ -206,8 +267,7 @@ namespace lidar_perception_ros{
         }
     }
 
-    int Tracking::Track(std::map<int, Tracker> &tracks, std::vector<BBox> bboxes, int frame_index, int &current_id,
-                        lidar_perception::ObjectInfoArray& object_array_msg) {
+    int Tracking::Track(std::map<int, Tracker> &tracks, std::vector<BBox> bboxes, int frame_index, int &current_id) {
         for (auto &track : tracks){
             track.second.Predict();
         }
@@ -241,36 +301,5 @@ namespace lidar_perception_ros{
                 }
             }
         }
-
-        float velocity_x=0;//gnssInput.vehicleNorthSpeed*cos(gnssInput.heading/360*2*M_PI)+gnssInput.vehicleEarthSpeed*sin(gnssInput.heading/360*2*M_PI);
-        float velocity_y=0;//gnssInput.vehicleNorthSpeed*sin(gnssInput.heading/360*2*M_PI)-gnssInput.vehicleEarthSpeed*cos(gnssInput.heading/360*2*M_PI);
-        
-        // std::cout<<"vehicleNorthSpeed:"<<gnssInput.vehicleNorthSpeed<<std::endl;
-        // std::cout<<"vehicleNorthSpeed:"<<gnssInput.vehicleEarthSpeed<<std::endl;
-        lidar_perception::TrackingObjectInfo object_info_msg;
-        int object_num = 0;
-        for (auto &trk : tracks) {
-            const auto &bbox = trk.second.GetStateAsBbox();
-            const auto &velocity=trk.second.GetStateAsVelocity();
-            bool state=trk.second.GetCoastCycles() < max_coast_cycles_ && (trk.second.GetHitStreak() >= min_hits_||frame_index < min_hits_);
-            if (trk.second.GetCoastCycles() < max_coast_cycles_ && (trk.second.GetHitStreak() >= min_hits_||frame_index < min_hits_)){
-                object_info_msg.id = (uint16_t)trk.first;
-
-                object_info_msg.tk_distance_xv=(int16_t)(bbox.x*128);
-                object_info_msg.tk_distance_yv=(int16_t)(bbox.y*128);
-                object_info_msg.tk_center_z=(int16_t)(velocity.center_z*128);
-                
-                if(bbox.dx>=30||bbox.dy>=40){continue;}
-                object_info_msg.tk_length = (uint16_t)(bbox.dx*128);
-                object_info_msg.tk_width = (uint16_t)(bbox.dy*128);
-                object_info_msg.tk_height = (uint16_t)(velocity.height*128);
-
-                object_info_msg.tk_velocity_xv=(int16_t)(velocity.velocity_x+velocity_x)*256;
-                object_info_msg.tk_velocity_yv=(int16_t)(velocity.velocity_y+velocity_y)*256;
-                object_array_msg.tracking_object_info[object_num] = object_info_msg;
-                object_num++;
-            }
-        }
-        object_array_msg.tracking_object_num = object_num;
     }
 }

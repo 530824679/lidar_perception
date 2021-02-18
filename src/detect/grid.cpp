@@ -10,6 +10,8 @@ namespace lidar_perception_ros
         min_height_ = 0.0;
         max_height_ = 0.0;
         height_diff_ = 0.0;
+        intensity_ave_ = 0.0;
+        is_roadside_ = false;
     }
 
     Grid::~Grid() {

@@ -1,76 +1,102 @@
 {
-  "calibrate" : {
-    "roll" :  0.0041568,
-    "pitch" : 0.181617,
-    "yaw" : 0.0400436,
-    "tx" : 0.0380122,
-    "ty" : 0.0553801,
-    "tz" : 1.87462
+  "calibrate": {
+    "roll": 0.0373239,
+    "pitch": -0.0047292,
+    "yaw": 0.0100436,
+    "tx": 0.5380122,
+    "ty": -0.4875,
+    "tz": 1.55172
   },
-  "roi_filter" : {
+  "roi_filter": {
     "roi_x_min": 0,
     "roi_x_max": 40,
     "roi_y_min": -15,
-    "roi_y_max": 15,
-    "roi_z_min": -0.5,
-    "roi_z_max": 2.2
+    "roi_y_max": 15.0,
+    "roi_z_min": -2.0,
+    "roi_z_max": 2.0
   },
-  "voxel_filter" : {
-    "voxel_x" : 0.1,
-    "voxel_y" : 0.1,
-    "voxel_z" : 0.1
+  "voxel_filter": {
+    "voxel_x": 0.1,
+    "voxel_y": 0.1,
+    "voxel_z": 0.1
   },
-  "curb_detect" : {
-    "min_grid_z" : -0.5,
-    "max_grid_z" : 1.5,
-    "min_ground_plane_z" : -0.3,
-    "max_ground_plane_z" : 0.3,
-    "min_ground_plane_i" : 0.0,
-    "max_ground_plane_i" : 8.0,
-    "min_ground_plane_points" : 500,
-    "max_iterations" : 300,
-    "plane_dist_threshold" : 0.05,
+  "curb_detect": {
+    "min_grid_z": -0.3,
+    "max_grid_z": 1.7,
+    "min_ground_plane_z": -0.3,
+    "max_ground_plane_z": 0.3,
+    "max_ground_plane_x": 20,
+    "min_ground_plane_i": 0.0,
+    "max_ground_plane_i": 8.0,
+    "min_ground_plane_points": 500,
+    "max_iterations": 150,
+    "plane_dist_threshold": 0.05,
+    "route_threshold": 0.8,
     "grid_row": 50,
     "grid_column": 80,
-    "height_max_upper_threshold" : 0.3,
-    "height_max_lower_threshold" : 0.1,
-    "height_diff_upper_threshold" : 0.25,
-    "height_diff_lower_threshold" : 0.1,
-    "min_curb_points" : 45,
-    "min_single_curb_points" : 12,
-    "line_dist_threshold" : 0.03,
-    "angle_threshold" : 5.0,
-    "points_threshold" : 8,
-    "not_tracking_max" : 5
+    "height_max_upper_threshold": 0.3,
+    "height_max_lower_threshold": 0.1,
+    "height_diff_upper_threshold": 0.25,
+    "height_diff_lower_threshold": 0.1,
+    "min_curb_points": 30,
+    "min_left_curb_points": 10,
+    "min_right_curb_points": 20,
+    "line_dist_threshold": 0.03,
+    "angle_threshold": 5.0,
+    "points_threshold_left": 5,
+    "points_threshold_right": 10,
+    "not_tracking_max": 5
   },
-  "object_segment" : {
-    "max_iterations" : 150,
-    "distance_tolerate" : 0.25,
-    "row" : 80,
-    "column" : 60,
-    "grid_size" : 0.5,
-    "height_threshold" : 0.4
+  "object_segment": {
+    "roll": -0.0404126,
+    "pitch": 0.170683,
+    "yaw": -0.069972,
+    "tx": 0.0628293,
+    "ty": 0.397884,
+    "tz": 1.86903
   },
-  "object_cluster" : {
+  "object_cluster": {
     "min_cluster_size": 5,
     "max_cluster_size": 5000,
-    "cluster_distance": 0.8
+    "cluster_distance": 0.5,
+    "dbscan_min_points": 10,
+    "dbscan_tolerance": 0.5,
+    "use_cluster_merge": false,
+    "cluster_merge_threshold": 2.0,
+    "cluster_merge_threshold_y": 1.0,
+    "use_multi_thresholds": false,
+    "cluster_ranges": [15, 30],
+    "cluster_distances": [0.4, 0.7, 1.0],
+    "dbscan_tolerances": [0.35, 0.5, 0.8]
   },
-  "bbox_builder" : {
+  "bbox_builder": {
     "min_distance": 0.05,
     "max_distance": 0.50,
-    "box_min_bottom": 0.5,
+    "box_min_bottom": 1.0,
     "box_min_top": 0.5,
+    "box_min_area": 0.01,
+    "box_max_area": 100,
     "box_min_volume": 0.01,
-    "box_max_volume": 500,
-    "height_threshold" : 0.3
+    "box_max_volume": 250,
+    "height_threshold": 0.3
   },
-  "tracking" : {
-    "max_coast_cycles": 5,
-    "min_hits": 3,
+  "tracking": {
+    "max_coast_cycles": 2,
+    "min_hits": 0,
     "min_confidence": 0.6,
-    "lidar_rate":10,
-    "acceleration_threshold":20,
-    "filter_threshold": 0.15
+    "lidar_rate": 10,
+    "acceleration_threshold": 20,
+    "filter_threshold": 0.5,
+    "kernel_size": 5,
+    "iou_weight": 0.2,
+    "rotate_iou_weight": 0.2,
+    "distance_weight": 0.6,
+    "centroid_weight": 0,
+    "pointnum_weight": 0,
+    "use_mutil_threshold": true,
+    "first_threshold": 0.5,
+    "second_threshold": 0.3,
+    "third_threshold": 0.1,
+    "tracking_distance": [0, 15, 25, 40]
   }
 }

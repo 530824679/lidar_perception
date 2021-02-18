@@ -9,7 +9,7 @@
 #include <vector>
 #include <cmath>
 #include <cstring>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 // local include
 #include "common/utils/point3d.h"
@@ -22,11 +22,6 @@ namespace lidar_perception_ros {
         typedef typename std::vector<PointXYZI<float>> PointCloud;
         typedef typename std::shared_ptr<std::vector<int>> IndicesPtr;
         typedef typename std::shared_ptr<std::vector<PointXYZI<float>>> PointCloudPtr;
-
-        struct Point2D{
-            float x;
-            float y;
-        };
 
     public:
         ConvexHull()= default;

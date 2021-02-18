@@ -40,38 +40,24 @@ namespace lidar_perception_ros{
         extrinsics_(2, 3) = param.tz_;
 
         // init sub module
-        roi_filter_ = std::make_shared<ROIFilter>();
+        roi_filter_ = std::make_shared<ROIFilter>(config_manager_.GetROIParam());
         outlier_filter_ = std::make_shared<OutlierFilter>();
-        voxel_filter_ = std::make_shared<VoxelFilter>();
-        segment_ = std::make_shared<Segment>(config_manager_.GetSegmentParam());
+        voxel_filter_ = std::make_shared<VoxelFilter>(config_manager_.GetVoxelParam());
+        segment_ = std::make_shared<Segment>(config_manager_.GetSegmentParam(), config_manager_.GetROIParam());
+        object_cluster_ = std::make_shared<Cluster>(config_manager_.GetClusterParam());
         curb_detect_ = std::make_shared<CurbDetect>(config_manager_.GetROIParam(), config_manager_.GetCurbParam());
-        bbox_fitting_ = std::make_shared<BBoxEstimator>(config_manager_.GetBBoxParam());
+        bbox_fitting_ = std::make_shared<LShapeBBoxEstimator>(config_manager_.GetBBoxParam());
         tracking_ = std::make_shared<Tracking>(config_manager_.GetTrackerParam());
+
+        lidar_subscriber_ = node_.subscribe<sensor_msgs::PointCloud2>("/livox/lidar", 100, &LidarProcess::ProcessLidarData, this);
     }
 
-    void LidarProcess::run(ros::NodeHandle node)
-    {
-        lidar_subscriber_ = node_.subscribe<sensor_msgs::PointCloud2>("/livox/lidar", 100, &LidarProcess::callback, this);
-        lidar_publisher_ = node_.advertise<visualization_msgs::Marker>("/test", 100);
-    }
-
-    void LidarProcess::callback(const sensor_msgs::PointCloud2ConstPtr& p_Horizon_ptr)
+    void LidarProcess::ProcessLidarData(const sensor_msgs::PointCloud2ConstPtr& p_Horizon_ptr)
     {
         PointCloudPtr input_cloud_ptr = std::make_shared<PointCloud>();
         ConversionData(p_Horizon_ptr, input_cloud_ptr);
 
-        lidar_perception::ObjectInfoArray object_info_msg;
-        ProcessPointCloud(input_cloud_ptr, object_info_msg);
-    }
-
-    void LidarProcess::ProcessLidarData(const sensor_msgs::PointCloud2::ConstPtr& p_Horizon_ptr, lidar_perception::ObjectInfoArray &object_info_msg)
-    {
-        std::cout << "Enter into LidarProcess ProcessLidarData." << std::endl;
-        PointCloudPtr input_cloud_ptr = std::make_shared<PointCloud>();
-        ConversionData(p_Horizon_ptr, input_cloud_ptr);
-        ProcessPointCloud(input_cloud_ptr, object_info_msg);
-
-        return;
+        ProcessPointCloud(input_cloud_ptr);
     }
 
     void LidarProcess::ConversionData(const sensor_msgs::PointCloud2::ConstPtr& input, PointCloudPtr& input_cloud_ptr)
@@ -79,7 +65,7 @@ namespace lidar_perception_ros{
         std::cout << "Enter into LidarProcess ConversionData." << std::endl;
         pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
         pcl::fromROSMsg(*input, pcl_cloud);
-        //std::cout << "size is :" << pcl_cloud.points.size() << std::endl;
+        std::cout << "size is :" << pcl_cloud.points.size() << std::endl;
 
         for (int i = 0; i < pcl_cloud.points.size(); ++i) {
             PointXYZI<float> pt;
@@ -91,7 +77,6 @@ namespace lidar_perception_ros{
         }
 
         CalibratePointCloud(input_cloud_ptr);
-
     }
 
     void LidarProcess::CalibratePointCloud(PointCloudPtr& input_cloud_ptr)
@@ -106,71 +91,48 @@ namespace lidar_perception_ros{
         }
     }
 
-    void LidarProcess::ProcessPointCloud(const PointCloudPtr& input_cloud_ptr, lidar_perception::ObjectInfoArray& object_info_msg)
+    void LidarProcess::ProcessPointCloud(const PointCloudPtr& input_cloud_ptr)
     {
-        clock_t start, end;
-        start = clock();
+        std::cout << "before point size is : " << (*input_cloud_ptr).size() << std::endl;
+
         PointCloudPtr filter_cloud_ptr(new PointCloud);
-        roi_filter_->PassThough(input_cloud_ptr, filter_cloud_ptr, config_manager_.GetROIParam());
-        end = clock();
-        cerr << "The filter roi runtime is: " << (float)(end - start) * 1000 / CLOCKS_PER_SEC << "ms" << std::endl;
-        cerr << "After the filter cloud num is: " << (*filter_cloud_ptr).size() << std::endl;
+        roi_filter_->PassThough(input_cloud_ptr, filter_cloud_ptr);
 
-//        start = clock();
-//        PointCloudPtr inlier_cloud_ptr(new PointCloud);
-//        outlier_filter_->OutlierRemove(*filter_cloud_ptr, *inlier_cloud_ptr);
-//        end = clock();
-//        cerr << "The oulier remove runtime is: " << (float)(end - start) * 1000 / CLOCKS_PER_SEC << "ms" << std::endl;
+        std::cout << "PassThough point size is : " << (*filter_cloud_ptr).size() << std::endl;
+        PointCloudPtr inlier_cloud_ptr(new PointCloud);
+        outlier_filter_->OutlierRemove(filter_cloud_ptr, inlier_cloud_ptr);
 
-        start = clock();
+        std::cout << "OutlierRemove point size is : " << (*inlier_cloud_ptr).size() << std::endl;
         PointCloudPtr voxel_cloud_ptr(new PointCloud);
-        voxel_filter_->PclVoxel(*filter_cloud_ptr, *voxel_cloud_ptr, config_manager_.GetVoxelParam());
-        end = clock();
-        cerr << "The voxel cloud runtime is: " << (float)(end - start) * 1000 / CLOCKS_PER_SEC << "ms" << std::endl;
-        cerr << "After the voxel cloud num is: " << (*voxel_cloud_ptr).size() << std::endl;
+        voxel_filter_->VoxelProcess(*inlier_cloud_ptr, *voxel_cloud_ptr);
 
-        start = clock();
+        std::cout << "VoxelProcess point size is : " << (*voxel_cloud_ptr).size() << std::endl;
         PointCloudPtr curb_filter_ptr(new PointCloud);
-        curb_detect_->Detect(voxel_cloud_ptr, curb_filter_ptr);
-        end = clock();
-        cerr << "The curb filter runtime is: " << (float)(end - start) * 1000 / CLOCKS_PER_SEC << "ms" << std::endl;
-        cerr << "After the curb cloud num is: " << (*curb_filter_ptr).size() << std::endl;
+        Eigen::Vector4d plane_coefficients;
+        curb_detect_->Detect(voxel_cloud_ptr, curb_filter_ptr, plane_coefficients);
 
-        start = clock();
         PointCloudPtr object_cloud_ptr(new PointCloud);
-        segment_->BuildGridMap(*voxel_cloud_ptr, *object_cloud_ptr);
-        end = clock();
-        cerr << "The object segment runtime is: " << (float)(end - start) * 1000 / CLOCKS_PER_SEC << "ms" << std::endl;
-        cerr << "After the segment cloud num is: " << (*object_cloud_ptr).size() << std::endl;
+        segment_->BuildGridMap(*voxel_cloud_ptr, *object_cloud_ptr, plane_coefficients);
 
-        start = clock();
         std::vector<PointCloud> cluster_cloud;
-        object_cluster_->PclEuclidCluster(*object_cloud_ptr, cluster_cloud, config_manager_.GetClusterParam());
-        end = clock();
-        cerr << "The object cluster runtime is: " << (float)(end - start) * 1000 / CLOCKS_PER_SEC << "ms" << std::endl;
+        object_cluster_->DBSCANClusterWithMerge(*object_cloud_ptr, cluster_cloud);
 
-        start = clock();
         std::vector<BBox> bboxes;
-        bbox_fitting_->Estimate(cluster_cloud, bboxes, object_info_msg);
-        end = clock();
-        cerr << "The BBox runtime is: " << (float)(end - start) * 1000 / CLOCKS_PER_SEC << "ms" << std::endl;
-       
-        start = clock();
-        tracking_->Process(bboxes, object_info_msg);
-        end = clock();
-        cerr << "The Tracking runtime is: " << (float)(end - start) * 1000 / CLOCKS_PER_SEC << "ms" << std::endl;
+        bbox_fitting_->Estimate(cluster_cloud, bboxes);
 
-        // PCL Visualization
+        std::vector<TrackerInfo> tracker_info;
+        tracking_->Process(bboxes);
+
+        //  Visualization
         viewer_->removeAllPointClouds();
         viewer_->removeAllShapes();
 
-
         pcl::PointCloud<pcl::PointXYZ> cloud;
-        for (size_t i = 0; i < (*filter_cloud_ptr).size(); i++) {
+        for (size_t i = 0; i < (*object_cloud_ptr).size(); i++) {
             pcl::PointXYZ pt;
-            pt.x = (*filter_cloud_ptr)[i].GetX();
-            pt.y = (*filter_cloud_ptr)[i].GetY();
-            pt.z = (*filter_cloud_ptr)[i].GetZ();
+            pt.x = (*object_cloud_ptr)[i].GetX();
+            pt.y = (*object_cloud_ptr)[i].GetY();
+            pt.z = (*object_cloud_ptr)[i].GetZ();
             cloud.push_back(pt);
         }
         viewer_->addPointCloud<pcl::PointXYZ> (cloud.makeShared(), "PointCloud");
@@ -263,36 +225,6 @@ namespace lidar_perception_ros{
 //        }
 
         viewer_->spinOnce();
-
-
-//        visualization_msgs::Marker points;
-//        points.header.frame_id = "livox_frame";
-//        points.header.stamp = ros::Time::now();
-//        points.action = visualization_msgs::Marker::MODIFY;
-//        points.pose.orientation.w = 1.0;
-//        points.type = visualization_msgs::Marker::POINTS;
-//
-//        points.scale.x = 0.2;
-//        points.scale.y = 0.2;
-//        points.scale.z = 0.2;
-//
-//        //srand(time(NULL));
-//        points.color.r = 0;
-//        points.color.g = 1.0f;
-//        points.color.b = 0;//rand() % 10 / (float)(10);
-//        points.color.a = 0.5f;
-//
-//        for (int i = 0; i < (*curb_filter_ptr).size(); ++i)
-//        {
-//            geometry_msgs::Point pt;
-//            pt.x = (*curb_filter_ptr)[i].GetX();
-//            pt.y = (*curb_filter_ptr)[i].GetY();
-//            pt.z = (*curb_filter_ptr)[i].GetZ();
-//
-//            points.points.push_back(pt);
-//        }
-//
-//        lidar_publisher_.publish(points);
 
     }
 }

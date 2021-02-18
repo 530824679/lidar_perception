@@ -22,6 +22,7 @@ as well as in the event of applications for industrial property rights.
 // system include
 #include <cmath>
 #include <vector>
+#include <memory>
 
 // local include
 #include "common/utils/point3d.h"
@@ -32,12 +33,14 @@ namespace lidar_perception_ros{
     {
     public:
         typedef typename std::vector<PointXYZI<float>> PointCloud;
+        typedef typename std::shared_ptr<std::vector<PointXYZI<float>>> PointCloudPtr;
 
     public:
         OutlierFilter() = default;
         virtual ~OutlierFilter(){};
 
-        void OutlierRemove(PointCloud& input_point_cloud, PointCloud &out_point_cloud);
+        void OutlierRemove(const PointCloudPtr& input_cloud_ptr, PointCloudPtr &out_cloud_ptr);
+        void InvalidRemove(PointCloudPtr& input_cloud_ptr);
     };
 
 }

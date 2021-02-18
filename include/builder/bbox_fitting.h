@@ -5,8 +5,8 @@
 // system include
 #include <math.h>
 #include <cfloat>
-#include <boost/shared_ptr.hpp>
 #include <iostream>
+#include <memory>
 
 // local include
 #include "Eigen/Eigen"
@@ -15,9 +15,6 @@
 
 #include "bbox_filter.h"
 #include "convex_hull.h"
-
-//publish messages
-#include "msgs/ObjectInfoArray.h"
 
 namespace lidar_perception_ros{
 
@@ -33,22 +30,15 @@ namespace lidar_perception_ros{
         BBoxEstimator(BBoxParam param);
         ~BBoxEstimator();
 
-        void Estimate(std::vector<PointCloud> &clusters, std::vector<BBox> &bboxes, lidar_perception::ObjectInfoArray& object_info_msg);
+        void Estimate(std::vector<PointCloud> &clusters, std::vector<BBox> &bboxes);
 
     private:
-        bool SearchBasedFitting(PointCloudPtr &in_cloud_ptr, BBox &box);
-
-        float CalcCloseness(const std::vector<float> &C_1, const std::vector<float> &C_2);
-
-        bool CalcBBox(const PointCloudPtr &in_cloud_ptr, std::vector<std::pair<float, float>> &Q, float dz, BBox &box);
-
-        Eigen::Array3f CalcCloudCentroid(const PointCloudPtr &in_cloud_ptr);
-
-        void GetMinMax3D(const PointCloudPtr &in_cloud_ptr, PointXYZI<float>& min_point, PointXYZI<float>& max_point);
+        void GetMinMax3D(const PointCloudPtr &in_cloud_ptr, PointXYZI<float>& min_point, PointXYZI<float>& max_point, PointXYZI<float>& centroid_point);
 
         bool AABBFitting(PointCloudPtr &in_cloud_ptr, BBox &box);
 
         bool HullFitting(PointCloudPtr &in_cloud_ptr, BBox &box);
+
     private:
         BBoxFilter bbox_filter_;
         ConvexHull convex_hull_;

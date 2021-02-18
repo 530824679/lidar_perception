@@ -2,7 +2,15 @@
 
 namespace lidar_perception_ros{
 
-    float VoxelFilter::EucliDistance(PointXYZI<float> &point1, PointXYZI<float> &point2){
+    VoxelFilter::VoxelFilter(VoxelParam roi_param)
+    {
+        voxel_x_ = roi_param.voxel_x_;
+        voxel_y_ = roi_param.voxel_y_;
+        voxel_z_ = roi_param.voxel_z_;
+    }
+
+    float VoxelFilter::EucliDistance(PointXYZI<float>& point1, PointXYZI<float>& point2)
+    {
         float distance_x = (point1.GetX() - point2.GetX()) * (point1.GetX() - point2.GetX());
         float distance_y = (point1.GetY() - point2.GetY()) * (point1.GetY() - point2.GetY());
         float distance_z = (point1.GetZ() - point2.GetZ()) * (point1.GetZ() - point2.GetZ());
@@ -10,8 +18,15 @@ namespace lidar_perception_ros{
         return distance;
     }
 
-    void VoxelFilter::VoxelProcess(PointCloud& input_point_cloud, PointCloud& out_point_cloud, VoxelParam voxel_param){
-        if (input_point_cloud.size() == 0){
+    void VoxelFilter::VoxelProcess(PointCloud& input_point_cloud, PointCloud& out_point_cloud)
+    {
+        // @name:    VoxelProcess
+        // @summary: downsample
+        // @input:   input_point_cloud
+        // @param:   voxel_x_,voxel_y_,voxel_z_
+        // @return:  out_point_cloud
+        if (input_point_cloud.size() == 0)
+        {
             printf("[%s]: Input Point Cloud is empty.\n", __func__);
             return;
         }
@@ -20,11 +35,11 @@ namespace lidar_perception_ros{
         GetMaxMin(input_point_cloud, min_p, max_p);
 
         Eigen::Vector3f inverse_leaf_size;
-        inverse_leaf_size << 1/voxel_param.voxel_x_, 1/voxel_param.voxel_y_, 1/voxel_param.voxel_z_;
+        inverse_leaf_size << 1 / voxel_x_, 1 / voxel_y_, 1 / voxel_z_;
 
         Eigen::Vector3f min_bbox, max_bbox, div_b, divb_mul;
-        min_bbox << static_cast<int> (floor(min_p[0] * inverse_leaf_size[0])), static_cast<int> (floor(min_p[1] * inverse_leaf_size[1])), static_cast<int> (floor(min_p[2] * inverse_leaf_size[2]));
-        max_bbox << static_cast<int> (floor(max_p[0] * inverse_leaf_size[0])), static_cast<int> (floor(max_p[1] * inverse_leaf_size[1])), static_cast<int> (floor(max_p[2] * inverse_leaf_size[2]));
+        min_bbox << static_cast<int>(floor(min_p[0] * inverse_leaf_size[0])), static_cast<int>(floor(min_p[1] * inverse_leaf_size[1])), static_cast<int>(floor(min_p[2] * inverse_leaf_size[2]));
+        max_bbox << static_cast<int>(floor(max_p[0] * inverse_leaf_size[0])), static_cast<int>(floor(max_p[1] * inverse_leaf_size[1])), static_cast<int>(floor(max_p[2] * inverse_leaf_size[2]));
 
         div_b << (max_bbox[0] - min_bbox[0] + 1), (max_bbox[1] - min_bbox[1] + 1), (max_bbox[2] - min_bbox[2] + 1);
         divb_mul << 1, div_b[0], div_b[0] * div_b[1];
@@ -33,15 +48,15 @@ namespace lidar_perception_ros{
         index_vector.reserve(input_point_cloud.size());
 
         //第一步：遍历所有点并将它们插入到具有计算idx的index_vector向量中;具有相同idx值的点将有助于产生CloudPoint的相同点
-        for (int i = 0; i < input_point_cloud.size();i++)
+        for (int i = 0; i < input_point_cloud.size(); i++)
         {
-            int ijk0 = static_cast<int> (floor(input_point_cloud[i].GetX() * inverse_leaf_size[0]) - static_cast<float> (min_bbox[0]));
-            int ijk1 = static_cast<int> (floor(input_point_cloud[i].GetY() * inverse_leaf_size[1]) - static_cast<float> (min_bbox[1]));
-            int ijk2 = static_cast<int> (floor(input_point_cloud[i].GetZ() * inverse_leaf_size[2]) - static_cast<float> (min_bbox[2]));
+            int ijk0 = static_cast<int>(ceil(input_point_cloud[i].GetX() * inverse_leaf_size[0]) - static_cast<float>(min_bbox[0]));
+            int ijk1 = static_cast<int>(ceil(input_point_cloud[i].GetY() * inverse_leaf_size[1]) - static_cast<float>(min_bbox[1]));
+            int ijk2 = static_cast<int>(ceil(input_point_cloud[i].GetZ() * inverse_leaf_size[2]) - static_cast<float>(min_bbox[2]));
 
             //计算质心叶索引
             int idx = ijk0 * divb_mul[0] + ijk1 * divb_mul[1] + ijk2 * divb_mul[2];
-            index_vector.push_back(PointCloudIndexIdx(static_cast<unsigned int> (idx), i));
+            index_vector.push_back(PointCloudIndexIdx(static_cast<unsigned int>(idx), i));
         }
         //第二步：使用表示目标单元格的值作为索引对index_vector向量进行排序;实际上属于同一输出单元格的所有点都将彼此相邻
         std::sort(index_vector.begin(), index_vector.end(), std::less<PointCloudIndexIdx>());
@@ -52,7 +67,7 @@ namespace lidar_perception_ros{
         unsigned int min_points_per_voxel = 0;
         //first_and_last_indices_vector [i]表示属于对应于第i个输出点的体素的index_vector中的第一个点的index_vector中的索引，以及不属于第一个点的索引
         std::vector<std::pair<unsigned int, unsigned int> > first_and_last_indices_vector;
-        first_and_last_indices_vector.reserve(index_vector.size());                              //分配内存空间
+        first_and_last_indices_vector.reserve(index_vector.size());  //分配内存空间
 
         while (index < index_vector.size())
         {
@@ -95,54 +110,25 @@ namespace lidar_perception_ros{
         return;
     }
 
-    void VoxelFilter::GetMaxMin(PointCloud& input_point_cloud, Eigen::Vector3f& min_p, Eigen::Vector3f& max_p){
-        if (input_point_cloud.size() == 0){
+    void VoxelFilter::GetMaxMin(PointCloud& input_point_cloud, Eigen::Vector3f& min_p, Eigen::Vector3f& max_p)
+    {
+        if (input_point_cloud.size() == 0)
+        {
             printf("[%s]: Input Point Cloud is empty.\n", __func__);
             return;
         }
 
-        float min_x = (*std::min_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b){return a.GetX() < b.GetX();})).GetX();
-        float min_y = (*std::min_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b){return a.GetY() < b.GetY();})).GetY();
-        float min_z = (*std::min_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b){return a.GetZ() < b.GetZ();})).GetZ();
+        float min_x = (*std::min_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b) { return a.GetX() < b.GetX(); })).GetX();
+        float min_y = (*std::min_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b) { return a.GetY() < b.GetY(); })).GetY();
+        float min_z = (*std::min_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b) { return a.GetZ() < b.GetZ(); })).GetZ();
         min_p << min_x, min_y, min_z;
 
-        float max_x = (*std::max_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b){return a.GetX() < b.GetX(); })).GetX();
-        float max_y = (*std::max_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b){return a.GetY() < b.GetY(); })).GetY();
-        float max_z = (*std::max_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b){return a.GetZ() < b.GetZ(); })).GetZ();
+        float max_x = (*std::max_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b) { return a.GetX() < b.GetX(); })).GetX();
+        float max_y = (*std::max_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b) { return a.GetY() < b.GetY(); })).GetY();
+        float max_z = (*std::max_element(input_point_cloud.begin(), input_point_cloud.end(), [](PointXYZI<float>& a, PointXYZI<float>& b) { return a.GetZ() < b.GetZ(); })).GetZ();
         max_p << max_x, max_y, max_z;
 
         return;
     }
-
-    void VoxelFilter::PclVoxel(PointCloud& input_point_cloud, PointCloud& out_point_cloud, VoxelParam voxel_param)
-    {
-        pcl::VoxelGrid<pcl::PointXYZI> filter;
-
-        pcl::PointCloud<pcl::PointXYZI>::Ptr in_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-        pcl::PointCloud<pcl::PointXYZI> out_cloud;
-        for (size_t i = 0; i < input_point_cloud.size(); i++)
-        {
-            pcl::PointXYZI pcl_pt;
-            pcl_pt.x = input_point_cloud[i].GetX();
-            pcl_pt.y = input_point_cloud[i].GetY();
-            pcl_pt.z = input_point_cloud[i].GetZ();
-            pcl_pt.intensity = input_point_cloud[i].GetI();
-            in_cloud->points.push_back(pcl_pt);
-        }
-
-        filter.setInputCloud(in_cloud);
-        filter.setLeafSize(voxel_param.voxel_x_, voxel_param.voxel_y_, voxel_param.voxel_z_);
-        filter.filter(out_cloud);
-
-        for (int j = 0; j < out_cloud.points.size(); ++j) {
-            PointXYZI<float> pt;
-            pt.SetX(out_cloud.points[j].x);
-            pt.SetY(out_cloud.points[j].y);
-            pt.SetZ(out_cloud.points[j].z);
-            pt.SetI(out_cloud.points[j].intensity);
-            out_point_cloud.push_back(pt);
-        }
-    }
-
 }
 

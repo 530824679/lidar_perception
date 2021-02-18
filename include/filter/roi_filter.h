@@ -37,24 +37,30 @@ namespace lidar_perception_ros{
 
     public:
         ROIFilter();
+        ROIFilter(ROIParam roi_param);
         virtual ~ROIFilter();
 
-        void PassThough(const PointCloudPtr& input_cloud_ptr, PointCloudPtr& output_cloud_ptr, ROIParam roi_param);
+        void PassThough(const PointCloudPtr& input_cloud_ptr, PointCloudPtr& output_cloud_ptr);
 
         bool InitCompute();
         bool DeinitCompute();
 
         void SetInputCloud(const PointCloudPtr &cloud);
-        void SetFilterFieldName(const std::string &field_name);
-        void SetFilterLimits(const float &limit_min, const float &limit_max);
+        void SetFilterLimits(const float &limit_min_x, const float &limit_max_x,
+                             const float &limit_min_y, const float &limit_max_y,
+                             const float &limit_min_z, const float &limit_max_z);
         void Filter(PointCloud &output_cloud);
 
         void CopyPointCloud(const PointCloud &input_cloud, const std::vector<int> &indices, PointCloud &output_cloud);
 
     private:
         std::string filter_field_name_;
-        double filter_limit_min_;
-        double filter_limit_max_;
+        double filter_limit_min_x_;
+        double filter_limit_max_x_;
+        double filter_limit_min_y_;
+        double filter_limit_max_y_;
+        double filter_limit_min_z_;
+        double filter_limit_max_z_;
 
         PointCloudPtr point_cloud_ptr_;
         IndicesPtr indices_ptr_;

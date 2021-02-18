@@ -2,68 +2,13 @@
 
 namespace lidar_perception_ros{
 
-    // Tracker::Tracker() : kf_(10, 5),publish_velocity_(),coast_cycles_(0), hit_streak_(0),lidar_rate_(0),acc_threshold_(0){
-    //     // state - center_x, center_y, length, width,yaw, v_cx, v_cy, v_length, v_width,v_yaw
-    //     kf_.F_ <<
-    //            1, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-    //             0, 1, 0, 0, 0, 0, 1, 0, 0, 0,
-    //             0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
-    //             0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
-    //             0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
-    //             0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-    //             0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-    //             0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-    //             0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-    //             0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
-
-    //     // Give high uncertainty to the unobservable initial velocities
-    //     kf_.P_ <<
-    //            10, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    //             0, 10, 0, 0, 0, 0, 0, 0, 0, 0,
-    //             0, 0, 10, 0, 0, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 10, 0, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 0, 10, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 0, 0, 10000, 0, 0, 0, 0,
-    //             0, 0, 0, 0, 0, 0,10000, 0, 0, 0,
-    //             0, 0, 0, 0, 0, 0, 0, 10000, 0, 0,
-    //             0, 0, 0, 0, 0, 0, 0, 0,10000, 0,
-    //             0, 0, 0, 0, 0, 0, 0, 0, 0, 10000;
-
-    //     kf_.H_ <<
-    //            1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    //             0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-    //             0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 0, 1, 0, 0, 0, 0, 0;
-
-    //     kf_.Q_ <<
-    //            1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    //             0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-    //             0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 0, 0, 0.01, 0, 0, 0, 0,
-    //             0, 0, 0, 0, 0, 0, 0.01, 0, 0, 0,
-    //             0, 0, 0, 0, 0, 0, 0, 0.0001, 0, 0,
-    //             0, 0, 0, 0, 0, 0, 0, 0, 0.0001, 0,
-    //             0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0001;
-
-    //     kf_.R_ <<
-    //            1, 0, 0,  0, 0,
-    //             0, 1, 0,  0, 0,
-    //             0, 0, 10, 0, 0,
-    //             0, 0, 0,  10, 0,
-    //             0, 0, 0,  0, 1;
-    // }
-
-    Tracker::Tracker() : kf_(8, 4),publish_velocity_(),coast_cycles_(0), hit_streak_(0),lidar_rate_(0),acc_threshold_(0){
-       /*** Define constant velocity model ***/
-    // state - center_x, center_y, width, height, v_cx, v_cy, v_width, v_height
+    Tracker::Tracker() : kf_(8, 4),coast_cycles_(0), hit_streak_(0),lidar_rate_(0),acc_threshold_(0),kf_velocity_(4,2){
+        // state - center_x, center_y, length, width,yaw, v_cx, v_cy, v_length, v_width,v_yaw
     kf_.F_ <<
-           1, 0, 0, 0, 1, 0, 0, 0,
-           0, 1, 0, 0, 0, 1, 0, 0,
-           0, 0, 1, 0, 0, 0, 1, 0,
-           0, 0, 0, 1, 0, 0, 0, 1,
+           1, 0, 0, 0, 0.1, 0, 0, 0,
+           0, 1, 0, 0, 0, 0.1, 0, 0,
+           0, 0, 1, 0, 0, 0, 0.1, 0,
+           0, 0, 0, 1, 0, 0, 0, 0.1,
            0, 0, 0, 0, 1, 0, 0, 0,
            0, 0, 0, 0, 0, 1, 0, 0,
            0, 0, 0, 0, 0, 0, 1, 0,
@@ -88,12 +33,12 @@ namespace lidar_perception_ros{
            0, 0, 0, 1, 0, 0, 0, 0;
 
     kf_.Q_ <<
-            1, 0, 0, 0, 0, 0, 0, 0,
-            0, 1, 0, 0, 0, 0, 0, 0,
-            0, 0, 1, 0, 0, 0, 0, 0,
-            0, 0, 0, 1, 0, 0, 0, 0,
-            0, 0, 0, 0, 0.01, 0, 0, 0,
-            0, 0, 0, 0, 0, 0.01, 0, 0,
+            0.08, 0, 0, 0, 0, 0, 0, 0,
+            0, 0.08, 0, 0, 0, 0, 0, 0,
+            0, 0, 0.1, 0, 0, 0, 0, 0,
+            0, 0, 0, 0.1, 0, 0, 0, 0,
+            0, 0, 0, 0, 0.008, 0, 0, 0,
+            0, 0, 0, 0, 0, 0.008, 0, 0,
             0, 0, 0, 0, 0, 0, 0.0001, 0,
             0, 0, 0, 0, 0, 0, 0, 0.0001;
 
@@ -103,6 +48,35 @@ namespace lidar_perception_ros{
             0, 0, 10, 0,
             0, 0, 0,  10;
 
+            
+    kf_velocity_.F_ <<
+           1, 0, 0.1, 0, 
+           0, 1, 0, 0.1, 
+           0, 0, 1, 0, 
+           0, 0, 0, 1;
+
+    // Give high uncertainty to the unobservable initial velocities
+    kf_velocity_.P_ <<
+           10, 0, 0, 0, 
+            0, 10, 0, 0,
+            0, 0, 10000, 0,
+            0, 0, 0, 10000;
+           
+
+    kf_velocity_.H_ <<
+           1, 0, 0, 0,
+           0, 1, 0, 0;
+
+    kf_velocity_.Q_ <<
+            3, 0, 0, 0, 
+            0, 3, 0, 0, 
+            0, 0, 20, 0,
+            0, 0, 0, 20;
+
+    kf_velocity_.R_ <<
+            5, 0, 
+            0, 5; 
+
     }
 
     Tracker::~Tracker(){
@@ -111,6 +85,7 @@ namespace lidar_perception_ros{
 
     void Tracker::Predict() {
         kf_.Predict();
+        kf_velocity_.Predict();
         // hit streak count will be reset
         if (coast_cycles_ > 0){
             hit_streak_ = 0;
@@ -123,60 +98,84 @@ namespace lidar_perception_ros{
     void Tracker::Update(const BBox& bbox) {
         coast_cycles_ = 0;
         hit_streak_++;
-
         Eigen::VectorXd observation = ConvertBboxToObservation(bbox);
-        publish_velocity_.tracker_velocity_.pre_center_x=publish_velocity_.tracker_velocity_.center_x;
-        publish_velocity_.tracker_velocity_.pre_center_y=publish_velocity_.tracker_velocity_.center_y;
-        publish_velocity_.tracker_velocity_.center_x=bbox.x;
-        publish_velocity_.tracker_velocity_.center_y=bbox.y;
-        publish_velocity_.tracker_velocity_.year++;
-
-        float tmp_v_x=(publish_velocity_.tracker_velocity_.center_x-publish_velocity_.tracker_velocity_.pre_center_x)*10;
-        float tmp_v_y=(publish_velocity_.tracker_velocity_.center_y-publish_velocity_.tracker_velocity_.pre_center_y)*10;
-
-        publish_velocity_.tracker_velocity_.pre_velocity_x=publish_velocity_.tracker_velocity_.velocity_x;
-        publish_velocity_.tracker_velocity_.pre_velocity_y=publish_velocity_.tracker_velocity_.velocity_y;
-
-        //*It needs to check the coordinate of the input box. Make sure the same coordiante.
-        publish_velocity_.tracker_velocity_.velocity_x=publish_velocity_.CalculateVelocity(publish_velocity_.velocity_x_,
-                                                                                tmp_v_x,publish_velocity_.tracker_velocity_.sum_velocity_x);
-        publish_velocity_.tracker_velocity_.velocity_y=publish_velocity_.CalculateVelocity(publish_velocity_.velocity_y_,
-                                                                                tmp_v_y,publish_velocity_.tracker_velocity_.sum_velocity_y);
-        if(Tracker::RejectOutlier(publish_velocity_)){
-            printf("[%s]:The acceleration is too large! Need to check!\n", __func__);
-        };
-
+        Eigen::VectorXd velocity_observation = ConvertBottomToObservation(bbox);
+  
         kf_.Update(observation);
+        kf_velocity_.Update(velocity_observation);
+        
+        bbox_.center_x = bbox.x;
+        bbox_.center_y = bbox.y;
+        bbox_.center_z = bbox.z;
+
+        bbox_.width = bbox.dx;
+        bbox_.length = bbox.dy;
+        bbox_.height = bbox.dz;
+
+        bbox_.centroid_x = bbox.centroid_x;
+        bbox_.centroid_y = bbox.centroid_y;
+        bbox_.centroid_z = bbox.centroid_z;
+
+        bbox_.points_num = bbox.points_num;
+
+        bbox_.angle = bbox.rotate;
+
+        bbox_.velocity_x = kf_velocity_.x_[2];
+        bbox_.velocity_y = kf_velocity_.x_[3];
+
+        RejectOutlier(bbox_);
+        
+        bbox_.corners.clear();
+        if(!bbox.vertex_pts.empty()){
+            for(int i=0;i<4;i++){
+                bbox_.corners.push_back(bbox.vertex_pts[i]);
+            }
+        }
+        
+        ++bbox_.year;
+        bbox_.pre_velocity_x = bbox_.velocity_x;
+        bbox_.pre_velocity_y = bbox_.velocity_y;
+
     }
 
     // Create and initialize new trackers for unmatched detections, with initial bounding box
     void Tracker::Init(const BBox &bbox) {
         kf_.x_.head(4) << ConvertBboxToObservation(bbox);
-        publish_velocity_.tracker_velocity_.pre_center_x=0;
-        publish_velocity_.tracker_velocity_.pre_center_y=0;
-        publish_velocity_.tracker_velocity_.center_x=bbox.x;
-        publish_velocity_.tracker_velocity_.center_y=bbox.y;
-        publish_velocity_.tracker_velocity_.year+=1;
+        kf_velocity_.x_.head(2) << ConvertBottomToObservation(bbox);
+        bbox_.center_x = bbox.x;
+        bbox_.center_y = bbox.y;
+        bbox_.center_z = bbox.z;
 
-        publish_velocity_.tracker_velocity_.velocity_x=0;
-        publish_velocity_.tracker_velocity_.velocity_y=0;
-        publish_velocity_.tracker_velocity_.pre_velocity_x=0;
-        publish_velocity_.tracker_velocity_.pre_velocity_y=0;
+        bbox_.width = bbox.dx;
+        bbox_.length = bbox.dy;
+        bbox_.height = bbox.dz;
 
-        publish_velocity_.velocity_x_;
-        publish_velocity_.velocity_y_;
+        bbox_.centroid_x = bbox.centroid_x;
+        bbox_.centroid_y = bbox.centroid_y;
+        bbox_.centroid_z = bbox.centroid_z;
 
-        publish_velocity_.height=bbox.dz;
-        publish_velocity_.z=bbox.z;
+        bbox_.points_num = bbox.points_num;
+ 
+        bbox_.angle = bbox.rotate;
+        bbox_.corners.clear();
+        
+        if(!bbox.vertex_pts.empty()){
+            for(int i=0;i<4;i++){
+                bbox_.corners.push_back(bbox.vertex_pts[i]);
+
+            }
+        }
+        bbox_.year += 1;
+
         hit_streak_++;
     }
 
-    BBox Tracker::GetStateAsBbox() const{
-        return ConvertStateToBbox(kf_.x_);
+    TrackerInfo Tracker::GetStateAsBbox() const{
+        return ConvertStateToBbox(kf_.x_,kf_velocity_.x_);
     }
 
-    TrackerInfo Tracker::GetStateAsVelocity() const{
-        return ConvertStateToVelocity(publish_velocity_);
+    TrackerInfo Tracker::GetStateAsInputBbox() const{
+        return ConvertStateToInputBbox(bbox_);
     }
 
     float Tracker::GetNIS() const {
@@ -185,32 +184,71 @@ namespace lidar_perception_ros{
 
     Eigen::VectorXd Tracker::ConvertBboxToObservation(const BBox& bbox) const{
         Eigen::VectorXd observation = Eigen::VectorXd::Zero(4);
-        auto length = static_cast<float>(bbox.dx);
-        auto width = static_cast<float>(bbox.dy);
 
-        float center_x = bbox.x;
-        float center_y = bbox.y;
+
+        auto length = static_cast<float>(bbox.rect_dx);
+        auto width = static_cast<float>(bbox.rect_dy);
+
+        float center_x = bbox.rect_x;
+        float center_y = bbox.rect_y;
 
 
         observation << center_x, center_y, length, width;
         return observation;
     }
 
-    BBox Tracker::ConvertStateToBbox(const Eigen::VectorXd &state) const{
-        BBox box;
-        // box.x = static_cast<int>(state[0]);
-        // box.y = static_cast<int>(state[1]);
+    Point2D Tracker::NearestBboxCorner(const BBox& bbox)const{
+        Point2D nearest_new_bbox_corner = bbox.vertex_pts[0];
+        float min_corner_distance = sqrt(bbox.vertex_pts[0].x*bbox.vertex_pts[0].x + bbox.vertex_pts[0].y*bbox.vertex_pts[0].y);
+         for (size_t i = 1; i < 4; ++i) {
+             float corner_distance = sqrt(bbox.vertex_pts[i].x*bbox.vertex_pts[i].x + bbox.vertex_pts[i].y*bbox.vertex_pts[i].y);
+             if(corner_distance < min_corner_distance){
+                 min_corner_distance = corner_distance;
+                 nearest_new_bbox_corner = bbox.vertex_pts[i];
+             }
+         }
 
-        // box.dx = static_cast<int>(state[2]);
-        // box.dy = static_cast<int>(state[3]);
+         return nearest_new_bbox_corner;
 
-        box.x = state[0];
-        box.y = state[1];
+    }
 
-        box.dx = state[2];
-        box.dy = state[3];
 
-        return box;
+    Eigen::VectorXd Tracker::ConvertBottomToObservation(const BBox& bbox) const{
+        Eigen::VectorXd observation = Eigen::VectorXd::Zero(2);
+
+        float bottom_center_x = bbox.rect_x-bbox.rect_dx/2;
+        float bottom_center_y = bbox.rect_dy;
+
+        Point2D nearest_corner = NearestBboxCorner(bbox);
+        //observation << nearest_corner.x, nearest_corner.y;
+
+        observation << bottom_center_x, bottom_center_y;
+
+        return observation;
+    }
+
+
+    TrackerInfo Tracker::ConvertStateToBbox(const Eigen::VectorXd &state,const Eigen::VectorXd &velocity_state) const{
+        TrackerInfo tracker;
+        tracker.center_x = state[0];
+        tracker.center_y = state[1];
+
+        tracker.width = state[2];
+        tracker.length = state[3];
+
+        //box.velocity_x = state[4];
+        //box.velocity_y = state[5];
+
+        // box.centroid_x = velocity_state[0];
+        // box.centroid_y = velocity_state[1];
+
+        tracker.velocity_x = velocity_state[2];
+        tracker.velocity_y = velocity_state[3];
+
+        // std::cout<<"velocity_state[2]"<<velocity_state[2]<<std::endl;
+
+
+        return tracker;
     }
 
     int Tracker::GetCoastCycles(){
@@ -221,31 +259,22 @@ namespace lidar_perception_ros{
         return hit_streak_;
     }
 
-    bool Tracker::RejectOutlier(Velocity& publish_velocity_){
-        if(publish_velocity_.tracker_velocity_.year>1){
-            float acceleration_x=(publish_velocity_.tracker_velocity_.velocity_x-publish_velocity_.tracker_velocity_.pre_velocity_x)*lidar_rate_;
-            float acceleration_y=(publish_velocity_.tracker_velocity_.velocity_y-publish_velocity_.tracker_velocity_.pre_velocity_y)*lidar_rate_;
+    bool Tracker::RejectOutlier(TrackerInfo& bbox_){
+        // if(bbox_.year>1){
+            float acceleration_x=(bbox_.velocity_x-bbox_.pre_velocity_x)*lidar_rate_;
+            float acceleration_y=(bbox_.velocity_y-bbox_.pre_velocity_y)*lidar_rate_;
 
             if((acceleration_x>acc_threshold_)&&(acceleration_y>acc_threshold_)){
-                publish_velocity_.tracker_velocity_.velocity_x=0;
-                publish_velocity_.tracker_velocity_.velocity_y=0;
+                bbox_.velocity_x=0;
+                bbox_.velocity_y=0;
                 return true;
             }
-        }
+        // }
         return false;
     }
 
-    TrackerInfo Tracker::ConvertStateToVelocity(const Velocity& publish_velocity_)const{
-        TrackerInfo output;
-        output.pre_center_x=publish_velocity_.tracker_velocity_.pre_center_x;
-        output.pre_center_y=publish_velocity_.tracker_velocity_.pre_center_y;
-        output.center_x=publish_velocity_.tracker_velocity_.center_x;
-        output.center_y=publish_velocity_.tracker_velocity_.center_y;
-        output.velocity_x=publish_velocity_.tracker_velocity_.velocity_x;
-        output.velocity_y=publish_velocity_.tracker_velocity_.velocity_y;
-        output.height=publish_velocity_.height;
-        output.center_z=publish_velocity_.z;
-        return output;
+    TrackerInfo Tracker::ConvertStateToInputBbox(const TrackerInfo& bbox)const{
+        return bbox;
     }
 
 }

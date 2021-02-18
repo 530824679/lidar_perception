@@ -56,15 +56,18 @@ namespace lidar_perception_ros{
 
     public:
         VoxelFilter() = default;
+        VoxelFilter(VoxelParam roi_param);
         ~VoxelFilter(){};
 
-        void VoxelProcess(PointCloud& input_point_cloud, PointCloud& out_point_cloud, VoxelParam voxel_param);
-        void PclVoxel(PointCloud& input_point_cloud, PointCloud& out_point_cloud, VoxelParam voxel_param);
+        void VoxelProcess(PointCloud& input_point_cloud, PointCloud& out_point_cloud);
 
     private:
         float EucliDistance(PointXYZI<float> &point1, PointXYZI<float> &point2);
         void GetMaxMin(PointCloud& input_point_cloud, Eigen::Vector3f& min_p, Eigen::Vector3f& max_p);
 
+        float voxel_x_;
+        float voxel_y_;
+        float voxel_z_;
     };
 }
 

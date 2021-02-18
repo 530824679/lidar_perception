@@ -78,7 +78,7 @@ namespace lidar_perception_ros
     {
         for (int i = 0; i < hull.size(); ++i)
         {
-            Point2D pt;
+            Point2D pt(0, 0);
             pt.x = hull[i].GetX() * cos(theta) - hull[i].GetY() * sin(theta);
             pt.y = hull[i].GetX() * sin(theta) + hull[i].GetY() * cos(theta);
             rotate_points.push_back(pt);

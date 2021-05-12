@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 2.8.3)
 project(lidar_perception)
 
 SET(CMAKE_BUILD_TYPE "Release")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
-## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
 add_compile_options(-g)
+add_definitions(-std=c++11)
 
 find_package(Boost REQUIRED)
 if(NOT Boost_FOUND)
@@ -40,7 +41,7 @@ find_package(catkin REQUIRED COMPONENTS
     rosbag
     geometry_msgs
     pcl_ros
-
+    tf
 )
 
 ## Generate messages in the 'msg' folder
@@ -63,6 +64,7 @@ catkin_package(
     rosbag
     geometry_msgs
     sensor_msgs
+    tf
 )
 
 include_directories(
